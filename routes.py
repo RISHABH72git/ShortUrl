@@ -1,5 +1,7 @@
 import random
 import string
+from typing import Optional
+
 from fastapi import APIRouter, Request, HTTPException
 from starlette.responses import RedirectResponse, JSONResponse
 
@@ -15,7 +17,7 @@ async def root():
 
 
 @router.get("/url/short")
-async def url_short(long_url: str, request: Request):
+async def url_short(long_url: str, request: Request, exp_sec: Optional[int] = None):
     # Random uppercase letter
     random_chars = ''.join(random.choices(string.ascii_uppercase, k=3))
     # Random lowercase letter
@@ -23,7 +25,10 @@ async def url_short(long_url: str, request: Request):
     url_id = f"{long_url[-1]}{random_chars}{random_lower}{long_url[0]}"
     redis_client = get_redis_client()
     if not await redis_client.exists(url_id):
-        await redis_client.set(url_id, long_url)
+        if exp_sec:
+            await redis_client.set(url_id, long_url, ex=exp_sec)
+        else:
+            await redis_client.set(url_id, long_url)
 
     host = str(request.base_url)
     short_url = f"{host}{url_id}"
